@@ -547,14 +547,23 @@
     // CONFIG
     // ══════════════════════════════════════
     const DEFAULT_PEOPLE = [
-      { id: 'cook', name: 'Cook', role: 'Cook', phone: '', emoji: '👨‍🍳', avatarClass: 'cook' },
-      { id: 'maid', name: 'Maid', role: 'Maid', phone: '', emoji: '🧹', avatarClass: 'maid' },
+      { id: 'cook', name: 'Nikita', role: 'Cook', phone: '917842409887', emoji: '👨‍🍳', avatarClass: 'cook' },
+      { id: 'maid', name: 'Renuka Ji', role: 'Maid', phone: '919177812899', emoji: '🧹', avatarClass: 'maid' },
     ];
 
     // ══════════════════════════════════════
     // STATE
     // ══════════════════════════════════════
+    // Migrate: if stored people still have blank phones, update from defaults
     let people = JSON.parse(localStorage.getItem('at_people')) || JSON.parse(JSON.stringify(DEFAULT_PEOPLE));
+    people.forEach(p => {
+      const def = DEFAULT_PEOPLE.find(d => d.id === p.id);
+      if (def && !p.phone && def.phone) {
+        p.name = def.name;
+        p.phone = def.phone;
+      }
+    });
+    localStorage.setItem('at_people', JSON.stringify(people));
     let absences = JSON.parse(localStorage.getItem('at_absences')) || {};
     let viewMonth = new Date();
 
