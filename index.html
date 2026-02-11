@@ -634,11 +634,32 @@
     <div class="page" id="page-settings">
       <div style="margin-bottom: 18px;">
         <h2 style="font-size: 1.1rem; font-weight: 600;">Settings</h2>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 2px;">Names & phone numbers</p>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 2px;">Names, phone numbers & backup</p>
       </div>
       <div id="settingsForm"></div>
       <button class="save-btn" onclick="saveSettings()">Save Settings</button>
-      <div style="margin-top: 24px;">
+
+      <div style="margin-top: 28px; border-top: 1px solid var(--border); padding-top: 20px;">
+        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; text-align: center;">Cloud Backup</div>
+        <div class="settings-card">
+          <h3>☁️ Google Sheets Backup</h3>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+            Paste your Google Apps Script URL below. Data auto-syncs every time you mark an absence.
+          </p>
+          <div class="setting-row">
+            <label>URL</label>
+            <input type="url" id="s_backup_url" placeholder="https://script.google.com/macros/s/..." style="font-size: 0.8rem;">
+          </div>
+          <button class="save-btn" style="margin-top: 10px;" onclick="saveBackupUrl()">Save Backup URL</button>
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button class="save-btn" style="flex: 1; background: rgba(0,184,148,0.15); color: var(--success);" onclick="syncNow()">↑ Sync Now</button>
+            <button class="save-btn" style="flex: 1; background: rgba(108,92,231,0.15); color: var(--accent-light);" onclick="restoreFromCloud()">↓ Restore</button>
+          </div>
+          <div id="backupStatus" style="text-align: center; margin-top: 10px; font-size: 0.78rem; color: var(--text-muted);"></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px;">
         <button class="save-btn" style="background: rgba(231,76,92,0.15); color: var(--danger-light);" onclick="confirmExport()">Export Data (JSON)</button>
       </div>
     </div>
@@ -722,6 +743,7 @@
     const save = () => {
       localStorage.setItem('at_people', JSON.stringify(people));
       localStorage.setItem('at_absences', JSON.stringify(absences));
+      syncToCloud();  // auto-backup on every change
     };
 
     const showToast = (msg) => {
@@ -1180,6 +1202,15 @@
       `).join('');
 
       document.getElementById('settingsForm').innerHTML = html;
+
+      // Populate backup URL
+      const urlInput = document.getElementById('s_backup_url');
+      if (urlInput) urlInput.value = backupUrl;
+
+      // Show last sync time
+      if (lastSyncTime) {
+        updateBackupStatus(`Last synced: ${new Date(lastSyncTime).toLocaleString('en-IN')}`);
+      }
     }
 
     function saveSettings() {
@@ -1205,6 +1236,135 @@
       a.click();
       URL.revokeObjectURL(url);
       showToast('Data exported!');
+    }
+
+    // ══════════════════════════════════════
+    // CLOUD BACKUP (Google Sheets)
+    // ══════════════════════════════════════
+    let backupUrl = localStorage.getItem('at_backup_url') || '';
+    let lastSyncTime = localStorage.getItem('at_last_sync') || '';
+    let syncInFlight = false;
+
+    function getBackupUrl() {
+      return backupUrl;
+    }
+
+    function saveBackupUrl() {
+      vibrate(10);
+      const input = document.getElementById('s_backup_url');
+      backupUrl = (input.value || '').trim();
+      localStorage.setItem('at_backup_url', backupUrl);
+      if (backupUrl) {
+        showToast('Backup URL saved!');
+        updateBackupStatus('URL saved. Tap "Sync Now" to test.');
+      } else {
+        showToast('Backup URL cleared');
+        updateBackupStatus('');
+      }
+    }
+
+    function updateBackupStatus(msg) {
+      const el = document.getElementById('backupStatus');
+      if (el) el.textContent = msg;
+    }
+
+    function syncToCloud() {
+      if (!backupUrl || syncInFlight) return;
+      syncInFlight = true;
+
+      const payload = { people, absences };
+
+      fetch(backupUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+        mode: 'no-cors'
+      }).then(() => {
+        // no-cors means we can't read the response, but data is sent
+        lastSyncTime = new Date().toISOString();
+        localStorage.setItem('at_last_sync', lastSyncTime);
+        syncInFlight = false;
+      }).catch(() => {
+        syncInFlight = false;
+      });
+    }
+
+    function syncNow() {
+      vibrate(10);
+      if (!backupUrl) {
+        showToast('Set backup URL first');
+        return;
+      }
+      updateBackupStatus('Syncing...');
+
+      const payload = { people, absences };
+
+      fetch(backupUrl, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain' },
+      }).then(r => r.text()).then(text => {
+        try {
+          const res = JSON.parse(text);
+          if (res.success) {
+            lastSyncTime = new Date().toISOString();
+            localStorage.setItem('at_last_sync', lastSyncTime);
+            const t = new Date(lastSyncTime).toLocaleString('en-IN');
+            updateBackupStatus(`✓ Synced at ${t} (${res.rows || 0} records)`);
+            showToast('Synced to Google Sheets!');
+          } else {
+            updateBackupStatus('✕ Sync failed: ' + (res.error || 'Unknown'));
+            showToast('Sync failed');
+          }
+        } catch {
+          // Might be CORS-limited, but data likely went through
+          lastSyncTime = new Date().toISOString();
+          localStorage.setItem('at_last_sync', lastSyncTime);
+          updateBackupStatus(`↑ Data sent (${new Date(lastSyncTime).toLocaleString('en-IN')})`);
+          showToast('Data sent to Google Sheets');
+        }
+      }).catch(err => {
+        updateBackupStatus('✕ Network error');
+        showToast('Sync failed — check URL & network');
+      });
+    }
+
+    function restoreFromCloud() {
+      vibrate(10);
+      if (!backupUrl) {
+        showToast('Set backup URL first');
+        return;
+      }
+
+      showDialog('Restore data from Google Sheets? This will replace your current local data.', () => {
+        updateBackupStatus('Restoring...');
+
+        fetch(backupUrl)
+          .then(r => r.json())
+          .then(res => {
+            if (res.success && res.data) {
+              if (res.data.people) {
+                people = res.data.people;
+                localStorage.setItem('at_people', JSON.stringify(people));
+              }
+              if (res.data.absences) {
+                absences = res.data.absences;
+                localStorage.setItem('at_absences', JSON.stringify(absences));
+              }
+              render();
+              const updated = res.lastUpdated ? new Date(res.lastUpdated).toLocaleString('en-IN') : 'unknown';
+              updateBackupStatus(`✓ Restored from backup (${updated})`);
+              showToast('Data restored from Google Sheets!');
+            } else {
+              updateBackupStatus('No backup data found');
+              showToast(res.message || 'No data to restore');
+            }
+          })
+          .catch(err => {
+            updateBackupStatus('✕ Restore failed');
+            showToast('Restore failed — check URL & network');
+          });
+      });
     }
 
     // ══════════════════════════════════════
