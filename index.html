@@ -361,6 +361,116 @@
     .save-btn:active { transform: scale(0.97); background: var(--accent-light); }
 
     /* ── History page ── */
+    /* ── Summary cards ── */
+    .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .summary-person {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .summary-person-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .summary-stat {
+      text-align: right;
+    }
+
+    .summary-stat .big {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--danger-light);
+      line-height: 1;
+    }
+
+    .summary-stat .sub {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .summary-dates {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .summary-dates span {
+      display: inline-block;
+      background: rgba(231, 76, 92, 0.08);
+      border: 1px solid rgba(231, 76, 92, 0.12);
+      padding: 2px 10px;
+      border-radius: 8px;
+      margin: 2px 3px 2px 0;
+      font-size: 0.76rem;
+      color: var(--danger-light);
+    }
+
+    .summary-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .summary-actions button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 12px;
+      border: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .summary-actions button:active { transform: scale(0.97); }
+
+    .summary-actions .btn-wa {
+      background: rgba(37, 211, 102, 0.12);
+      color: var(--whatsapp);
+      border: 1px solid rgba(37, 211, 102, 0.25);
+    }
+
+    .summary-actions .btn-copy {
+      background: rgba(108, 92, 231, 0.12);
+      color: var(--accent-light);
+      border: 1px solid rgba(108, 92, 231, 0.25);
+    }
+
+    .summary-zero {
+      text-align: center;
+      padding: 20px;
+      color: var(--success);
+      font-size: 0.85rem;
+    }
+
+    /* ── History (compact list) ── */
     .history-month {
       background: var(--card);
       border: 1px solid var(--border);
@@ -489,13 +599,34 @@
       <div id="cards"></div>
     </div>
 
-    <!-- ── HISTORY PAGE ── -->
+    <!-- ── SUMMARY PAGE ── -->
     <div class="page" id="page-history">
       <div style="margin-bottom: 18px;">
-        <h2 style="font-size: 1.1rem; font-weight: 600;">Absence History</h2>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 2px;">All recorded months</p>
+        <h2 style="font-size: 1.1rem; font-weight: 600;">Monthly Summary</h2>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 2px;">Generate & share absence reports</p>
       </div>
-      <div id="historyContent"></div>
+
+      <div class="month-selector" style="margin-bottom: 20px;">
+        <button onclick="changeSummaryMonth(-1)">‹</button>
+        <span id="summaryMonthLabel"></span>
+        <button onclick="changeSummaryMonth(1)">›</button>
+      </div>
+
+      <div id="summaryContent"></div>
+
+      <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <button class="action-btn" style="background: var(--accent); color: white;" onclick="copyFullSummary()">
+          📋 Copy Full Summary
+        </button>
+        <button class="action-btn whatsapp" onclick="shareFullSummaryWhatsApp()">
+          📱 Share Full Summary via WhatsApp
+        </button>
+      </div>
+
+      <div style="margin-top: 28px; border-top: 1px solid var(--border); padding-top: 20px;">
+        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; text-align: center;">All Months</div>
+        <div id="historyContent"></div>
+      </div>
     </div>
 
     <!-- ── SETTINGS PAGE ── -->
@@ -520,7 +651,7 @@
     </button>
     <button class="nav-item" onclick="switchPage('history', this)" id="nav-history">
       <span class="nav-icon">📊</span>
-      History
+      Summary
     </button>
     <button class="nav-item" onclick="switchPage('settings', this)" id="nav-settings">
       <span class="nav-icon">⚙️</span>
@@ -611,7 +742,7 @@
       document.getElementById(`page-${name}`).classList.add('active');
       if (btn) btn.classList.add('active');
 
-      if (name === 'history') renderHistory();
+      if (name === 'history') renderSummary();
       if (name === 'settings') renderSettings();
     }
 
@@ -804,9 +935,155 @@
     }
 
     // ══════════════════════════════════════
-    // RENDER — HISTORY
+    // SUMMARY
     // ══════════════════════════════════════
-    function renderHistory() {
+    let summaryMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1); // default: previous month
+
+    function changeSummaryMonth(delta) {
+      vibrate();
+      summaryMonth.setMonth(summaryMonth.getMonth() + delta);
+      renderSummary();
+    }
+
+    function getSummaryMonthName() {
+      return summaryMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    }
+
+    function buildSummaryText(personId) {
+      const person = people.find(p => p.id === personId);
+      const month = monthKey(summaryMonth);
+      const dates = getAbsences(personId, month);
+      const monthName = getSummaryMonthName();
+
+      if (dates.length === 0) return null;
+
+      const dateList = dates.map(d => `  • ${formatDateLong(d)}`).join('\n');
+      return `${person.emoji} ${person.name} (${person.role}) — ${monthName}\n\nAbsent: ${dates.length} day(s)\n${dateList}`;
+    }
+
+    function buildFullSummaryText() {
+      const monthName = getSummaryMonthName();
+      let text = `📋 Absence Summary — ${monthName}\n${'─'.repeat(30)}\n`;
+
+      let hasAny = false;
+      people.forEach(person => {
+        const month = monthKey(summaryMonth);
+        const dates = getAbsences(person.id, month);
+        text += `\n${person.emoji} ${person.name} (${person.role})\n`;
+        if (dates.length === 0) {
+          text += `   No absences ✓\n`;
+        } else {
+          hasAny = true;
+          text += `   Absent: ${dates.length} day(s)\n`;
+          dates.forEach(d => { text += `   • ${formatDateLong(d)}\n`; });
+        }
+      });
+
+      if (!hasAny) text += `\nNo absences recorded for ${monthName}.`;
+      return text;
+    }
+
+    function copyPersonSummary(personId) {
+      const text = buildSummaryText(personId);
+      if (!text) { showToast('No absences to copy'); return; }
+      navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
+    }
+
+    function sharePersonWhatsApp(personId) {
+      const person = people.find(p => p.id === personId);
+      if (!person?.phone) { showToast(`Add ${person.name}'s phone in Settings`); return; }
+
+      const month = monthKey(summaryMonth);
+      const dates = getAbsences(personId, month);
+      const monthName = getSummaryMonthName();
+
+      if (dates.length === 0) { showToast(`No absences in ${monthName}`); return; }
+
+      const dateList = dates.map(d => `  • ${formatDateLong(d)}`).join('\n');
+      const msg = `Hi ${person.name}, here's your absence summary for ${monthName}:\n\n${dateList}\n\nTotal: ${dates.length} day(s)\n\nPlease note this for payment adjustment.`;
+      const phone = person.phone.replace(/[^0-9]/g, '');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function copyFullSummary() {
+      vibrate();
+      navigator.clipboard.writeText(buildFullSummaryText()).then(() => showToast('Full summary copied!'));
+    }
+
+    function shareFullSummaryWhatsApp() {
+      vibrate();
+      const text = buildFullSummaryText();
+      // Use Web Share API if available (native share sheet on mobile)
+      if (navigator.share) {
+        navigator.share({ title: `Absence Summary — ${getSummaryMonthName()}`, text }).catch(() => {});
+      } else {
+        // Fallback: copy and let user paste
+        navigator.clipboard.writeText(text).then(() => showToast('Summary copied — paste in WhatsApp'));
+      }
+    }
+
+    function renderSummary() {
+      document.getElementById('summaryMonthLabel').textContent = getSummaryMonthName();
+      const month = monthKey(summaryMonth);
+
+      const cards = people.map(person => {
+        const dates = getAbsences(person.id, month);
+
+        if (dates.length === 0) {
+          return `
+            <div class="summary-card">
+              <div class="summary-header">
+                <div class="summary-person">
+                  <div class="summary-person-avatar ${person.avatarClass}">${person.emoji}</div>
+                  <div>
+                    <div style="font-weight: 600; font-size: 0.95rem;">${person.name}</div>
+                    <div style="color: var(--text-muted); font-size: 0.75rem;">${person.role}</div>
+                  </div>
+                </div>
+                <div class="summary-stat">
+                  <div class="big" style="color: var(--success);">0</div>
+                  <div class="sub">absences</div>
+                </div>
+              </div>
+              <div class="summary-zero">No absences this month ✓</div>
+            </div>`;
+        }
+
+        return `
+          <div class="summary-card">
+            <div class="summary-header">
+              <div class="summary-person">
+                <div class="summary-person-avatar ${person.avatarClass}">${person.emoji}</div>
+                <div>
+                  <div style="font-weight: 600; font-size: 0.95rem;">${person.name}</div>
+                  <div style="color: var(--text-muted); font-size: 0.75rem;">${person.role}</div>
+                </div>
+              </div>
+              <div class="summary-stat">
+                <div class="big">${dates.length}</div>
+                <div class="sub">absences</div>
+              </div>
+            </div>
+            <div class="summary-dates">
+              ${dates.map(d => `<span>${formatDateLong(d)}</span>`).join(' ')}
+            </div>
+            <div class="summary-actions">
+              <button class="btn-wa" onclick="sharePersonWhatsApp('${person.id}')">📱 WhatsApp</button>
+              <button class="btn-copy" onclick="copyPersonSummary('${person.id}')">📋 Copy</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      document.getElementById('summaryContent').innerHTML = cards;
+
+      // Also render compact history below
+      renderHistoryList();
+    }
+
+    // ══════════════════════════════════════
+    // RENDER — HISTORY (compact list)
+    // ══════════════════════════════════════
+    function renderHistoryList() {
       const months = new Set();
       Object.keys(absences).forEach(key => {
         const month = key.split('_')[1];
@@ -816,7 +1093,7 @@
       const sorted = [...months].sort().reverse();
 
       if (sorted.length === 0) {
-        document.getElementById('historyContent').innerHTML = '<div class="empty-state">No absence history yet</div>';
+        document.getElementById('historyContent').innerHTML = '<div class="empty-state">No history yet</div>';
         return;
       }
 
@@ -847,7 +1124,7 @@
         </div>`;
       }).filter(Boolean).join('');
 
-      document.getElementById('historyContent').innerHTML = html || '<div class="empty-state">No absence history yet</div>';
+      document.getElementById('historyContent').innerHTML = html || '<div class="empty-state">No history yet</div>';
     }
 
     // ══════════════════════════════════════
