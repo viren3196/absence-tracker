@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Absences">
+  <meta name="theme-color" content="#0f0f13">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Absence Tracker</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --card: #1a1a24;
+      --card-hover: #22223a;
+      --accent: #6c5ce7;
+      --accent-light: #a29bfe;
+      --danger: #e74c5c;
+      --danger-light: #ff7675;
+      --success: #00b894;
+      --text: #f0f0f5;
+      --text-muted: #8888a0;
+      --border: #2d2d44;
+      --whatsapp: #25D366;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 16px;
+      padding-top: calc(16px + var(--safe-top));
+      padding-bottom: calc(80px + var(--safe-bottom));
+      overscroll-behavior: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      padding: 16px 0 12px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 2px;
+    }
+
+    /* ── Today banner ── */
+    .today-banner {
+      background: linear-gradient(135deg, var(--accent), #4834d4);
+      border-radius: 18px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .today-banner .date { font-size: 1.05rem; font-weight: 600; }
+    .today-banner .day { font-size: 0.78rem; opacity: 0.75; margin-top: 2px; }
+
+    /* ── Bottom nav ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(15, 15, 19, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      padding: 10px 0;
+      padding-bottom: calc(10px + var(--safe-bottom));
+      z-index: 50;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.65rem;
+      cursor: pointer;
+      padding: 4px 12px;
+      transition: color 0.2s;
+    }
+
+    .nav-item.active { color: var(--accent-light); }
+    .nav-item .nav-icon { font-size: 1.4rem; }
+
+    /* ── Tabs / Pages ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Month selector ── */
+    .month-selector {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+
+    .month-selector button {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .month-selector button:active { background: var(--accent); }
+
+    .month-selector span {
+      font-size: 0.95rem;
+      font-weight: 600;
+      min-width: 160px;
+      text-align: center;
+    }
+
+    /* ── Person card ── */
+    .person-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+
+    .person-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .person-info { display: flex; align-items: center; gap: 12px; }
+
+    .person-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .person-avatar.cook { background: linear-gradient(135deg, #fdcb6e, #e17055); }
+    .person-avatar.maid { background: linear-gradient(135deg, #74b9ff, #0984e3); }
+
+    .person-name { font-weight: 600; font-size: 1rem; }
+    .person-role { color: var(--text-muted); font-size: 0.75rem; margin-top: 1px; }
+
+    .absence-count {
+      text-align: center;
+      padding: 6px 14px;
+      border-radius: 12px;
+      background: rgba(231, 76, 92, 0.12);
+      border: 1px solid rgba(231, 76, 92, 0.2);
+    }
+
+    .absence-count .number {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--danger-light);
+      line-height: 1;
+    }
+
+    .absence-count .label {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Buttons ── */
+    .btn-group { display: flex; flex-direction: column; gap: 8px; }
+
+    .action-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .action-btn:active { transform: scale(0.97); }
+
+    .action-btn.mark-absent {
+      background: var(--danger);
+      color: white;
+    }
+
+    .action-btn.mark-present {
+      background: rgba(0, 184, 148, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(0, 184, 148, 0.3);
+    }
+
+    .action-btn.already-absent {
+      background: rgba(231, 76, 92, 0.15);
+      color: var(--danger-light);
+      border: 1px solid rgba(231, 76, 92, 0.25);
+    }
+
+    .action-btn.whatsapp {
+      background: rgba(37, 211, 102, 0.12);
+      color: var(--whatsapp);
+      border: 1px solid rgba(37, 211, 102, 0.25);
+      padding: 11px;
+      font-size: 0.84rem;
+    }
+
+    .action-btn.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* ── Date chips ── */
+    .absence-dates {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .absence-dates-title {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .date-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .date-chip {
+      padding: 5px 12px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      background: rgba(231, 76, 92, 0.1);
+      color: var(--danger-light);
+      border: 1px solid rgba(231, 76, 92, 0.15);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .date-chip:active { background: rgba(231, 76, 92, 0.35); }
+
+    .empty-state {
+      text-align: center;
+      padding: 14px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    /* ── Settings page ── */
+    .settings-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+
+    .settings-card h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .setting-row:last-child { margin-bottom: 0; }
+
+    .setting-row label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      min-width: 65px;
+    }
+
+    .setting-row input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border 0.2s;
+      -webkit-appearance: none;
+    }
+
+    .setting-row input:focus { border-color: var(--accent); }
+
+    .save-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .save-btn:active { transform: scale(0.97); background: var(--accent-light); }
+
+    /* ── History page ── */
+    .history-month {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 10px;
+    }
+
+    .history-month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .history-month-name { font-weight: 600; font-size: 0.9rem; }
+
+    .history-count {
+      font-size: 0.8rem;
+      color: var(--danger-light);
+      background: rgba(231, 76, 92, 0.12);
+      padding: 2px 10px;
+      border-radius: 8px;
+    }
+
+    .history-dates {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: calc(70px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 12px 22px;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      transition: transform 0.3s ease;
+      z-index: 100;
+      white-space: nowrap;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Confirm dialog ── */
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 24px;
+    }
+
+    .dialog-overlay.show { display: flex; }
+
+    .dialog-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      max-width: 320px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .dialog-box p { font-size: 0.9rem; margin-bottom: 18px; line-height: 1.4; }
+
+    .dialog-actions { display: flex; gap: 10px; }
+
+    .dialog-actions button {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .dialog-cancel {
+      background: var(--bg);
+      color: var(--text-muted);
+      border: 1px solid var(--border) !important;
+    }
+
+    .dialog-confirm {
+      background: var(--danger);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Absence Tracker</h1>
+      <p id="headerSub">Track attendance</p>
+    </header>
+
+    <!-- ── HOME PAGE ── -->
+    <div class="page active" id="page-home">
+      <div class="today-banner">
+        <div>
+          <div class="date" id="todayDate"></div>
+          <div class="day" id="todayDay"></div>
+        </div>
+        <div style="font-size: 1.8rem;">📋</div>
+      </div>
+
+      <div class="month-selector">
+        <button onclick="changeMonth(-1)">‹</button>
+        <span id="monthLabel"></span>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+
+      <div id="cards"></div>
+    </div>
+
+    <!-- ── HISTORY PAGE ── -->
+    <div class="page" id="page-history">
+      <div style="margin-bottom: 18px;">
+        <h2 style="font-size: 1.1rem; font-weight: 600;">Absence History</h2>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 2px;">All recorded months</p>
+      </div>
+      <div id="historyContent"></div>
+    </div>
+
+    <!-- ── SETTINGS PAGE ── -->
+    <div class="page" id="page-settings">
+      <div style="margin-bottom: 18px;">
+        <h2 style="font-size: 1.1rem; font-weight: 600;">Settings</h2>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 2px;">Names & phone numbers</p>
+      </div>
+      <div id="settingsForm"></div>
+      <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+      <div style="margin-top: 24px;">
+        <button class="save-btn" style="background: rgba(231,76,92,0.15); color: var(--danger-light);" onclick="confirmExport()">Export Data (JSON)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="switchPage('home', this)" id="nav-home">
+      <span class="nav-icon">🏠</span>
+      Home
+    </button>
+    <button class="nav-item" onclick="switchPage('history', this)" id="nav-history">
+      <span class="nav-icon">📊</span>
+      History
+    </button>
+    <button class="nav-item" onclick="switchPage('settings', this)" id="nav-settings">
+      <span class="nav-icon">⚙️</span>
+      Settings
+    </button>
+  </nav>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Confirm dialog -->
+  <div class="dialog-overlay" id="dialogOverlay">
+    <div class="dialog-box">
+      <p id="dialogText"></p>
+      <div class="dialog-actions">
+        <button class="dialog-cancel" onclick="closeDialog()">Cancel</button>
+        <button class="dialog-confirm" id="dialogConfirmBtn">Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ══════════════════════════════════════
+    // CONFIG
+    // ══════════════════════════════════════
+    const DEFAULT_PEOPLE = [
+      { id: 'cook', name: 'Cook', role: 'Cook', phone: '', emoji: '👨‍🍳', avatarClass: 'cook' },
+      { id: 'maid', name: 'Maid', role: 'Maid', phone: '', emoji: '🧹', avatarClass: 'maid' },
+    ];
+
+    // ══════════════════════════════════════
+    // STATE
+    // ══════════════════════════════════════
+    let people = JSON.parse(localStorage.getItem('at_people')) || JSON.parse(JSON.stringify(DEFAULT_PEOPLE));
+    let absences = JSON.parse(localStorage.getItem('at_absences')) || {};
+    let viewMonth = new Date();
+
+    // ══════════════════════════════════════
+    // HELPERS
+    // ══════════════════════════════════════
+    const todayStr = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    };
+
+    const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+
+    const formatDate = (dateStr) => {
+      const d = new Date(dateStr + 'T00:00:00');
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    };
+
+    const formatDateLong = (dateStr) => {
+      const d = new Date(dateStr + 'T00:00:00');
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
+    const save = () => {
+      localStorage.setItem('at_people', JSON.stringify(people));
+      localStorage.setItem('at_absences', JSON.stringify(absences));
+    };
+
+    const showToast = (msg) => {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    };
+
+    const vibrate = (ms = 10) => { if (navigator.vibrate) navigator.vibrate(ms); };
+
+    // ══════════════════════════════════════
+    // PAGE NAVIGATION
+    // ══════════════════════════════════════
+    function switchPage(name, btn) {
+      vibrate();
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById(`page-${name}`).classList.add('active');
+      if (btn) btn.classList.add('active');
+
+      if (name === 'history') renderHistory();
+      if (name === 'settings') renderSettings();
+    }
+
+    // ══════════════════════════════════════
+    // DIALOG
+    // ══════════════════════════════════════
+    function showDialog(text, onConfirm) {
+      document.getElementById('dialogText').textContent = text;
+      document.getElementById('dialogOverlay').classList.add('show');
+      document.getElementById('dialogConfirmBtn').onclick = () => {
+        closeDialog();
+        onConfirm();
+      };
+    }
+
+    function closeDialog() {
+      document.getElementById('dialogOverlay').classList.remove('show');
+    }
+
+    // ══════════════════════════════════════
+    // ABSENCE LOGIC
+    // ══════════════════════════════════════
+    function getAbsences(personId, month) {
+      return absences[`${personId}_${month}`] || [];
+    }
+
+    function isAbsentToday(personId) {
+      return getAbsences(personId, monthKey(new Date())).includes(todayStr());
+    }
+
+    function toggleAbsence(personId) {
+      vibrate(15);
+      const today = todayStr();
+      const month = monthKey(new Date());
+      const key = `${personId}_${month}`;
+
+      if (!absences[key]) absences[key] = [];
+
+      const idx = absences[key].indexOf(today);
+      if (idx === -1) {
+        absences[key].push(today);
+        absences[key].sort();
+        save();
+        render();
+        showToast('Marked absent for today');
+        sendWhatsApp(personId, today);
+      } else {
+        absences[key].splice(idx, 1);
+        save();
+        render();
+        showToast('Marked present — absence removed');
+      }
+    }
+
+    function removeAbsence(personId, date) {
+      showDialog(
+        `Remove absence on ${formatDate(date)}?`,
+        () => {
+          const d = new Date(date + 'T00:00:00');
+          const month = monthKey(d);
+          const key = `${personId}_${month}`;
+          if (absences[key]) {
+            absences[key] = absences[key].filter(x => x !== date);
+            if (absences[key].length === 0) delete absences[key];
+            save();
+            render();
+            showToast(`Removed ${formatDate(date)}`);
+          }
+        }
+      );
+    }
+
+    // ══════════════════════════════════════
+    // WHATSAPP
+    // ══════════════════════════════════════
+    function sendWhatsApp(personId, date) {
+      const person = people.find(p => p.id === personId);
+      if (!person?.phone) {
+        showToast(`Add ${person.name}'s phone in Settings to send WhatsApp`);
+        return;
+      }
+
+      const phone = person.phone.replace(/[^0-9]/g, '');
+      const formattedDate = formatDateLong(date);
+      const month = monthKey(new Date(date + 'T00:00:00'));
+      const count = getAbsences(personId, month).length;
+      const monthName = new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+      const msg = `Hi ${person.name}, noting your absence today (${formattedDate}). Total absences in ${monthName}: ${count}.`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function sendMonthlySummary(personId) {
+      const person = people.find(p => p.id === personId);
+      if (!person?.phone) {
+        showToast(`Add ${person.name}'s phone in Settings first`);
+        return;
+      }
+
+      const month = monthKey(viewMonth);
+      const dates = getAbsences(personId, month);
+      const monthName = viewMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+      if (dates.length === 0) {
+        showToast(`No absences in ${monthName}`);
+        return;
+      }
+
+      const dateList = dates.map(d => `  • ${formatDateLong(d)}`).join('\n');
+      const msg = `Hi ${person.name}, your absence record for ${monthName}:\n\n${dateList}\n\nTotal: ${dates.length} day(s)`;
+      const phone = person.phone.replace(/[^0-9]/g, '');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    // ══════════════════════════════════════
+    // MONTH NAV
+    // ══════════════════════════════════════
+    function changeMonth(delta) {
+      vibrate();
+      viewMonth.setMonth(viewMonth.getMonth() + delta);
+      render();
+    }
+
+    // ══════════════════════════════════════
+    // RENDER — HOME
+    // ══════════════════════════════════════
+    function render() {
+      const now = new Date();
+      document.getElementById('todayDate').textContent = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      document.getElementById('todayDay').textContent = now.toLocaleDateString('en-IN', { weekday: 'long' });
+      document.getElementById('monthLabel').textContent = viewMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+      const month = monthKey(viewMonth);
+      const isCurrentMonth = month === monthKey(new Date());
+
+      const html = people.map(person => {
+        const dates = getAbsences(person.id, month);
+        const count = dates.length;
+        const absent = isAbsentToday(person.id);
+
+        let btnHtml;
+        if (!isCurrentMonth) {
+          btnHtml = `<button class="action-btn mark-present disabled">Navigate to current month</button>`;
+        } else if (absent) {
+          btnHtml = `<button class="action-btn already-absent" onclick="toggleAbsence('${person.id}')">✕ Undo — Mark Present Today</button>`;
+        } else {
+          btnHtml = `<button class="action-btn mark-absent" onclick="toggleAbsence('${person.id}')">✋ Absent Today</button>`;
+        }
+
+        const datesHtml = dates.length > 0
+          ? `<div class="absence-dates">
+              <div class="absence-dates-title">Absent dates</div>
+              <div class="date-chips">
+                ${dates.map(d => `<span class="date-chip" onclick="removeAbsence('${person.id}','${d}')">${formatDate(d)}</span>`).join('')}
+              </div>
+            </div>`
+          : `<div class="absence-dates"><div class="empty-state">No absences this month</div></div>`;
+
+        return `
+          <div class="person-card">
+            <div class="person-header">
+              <div class="person-info">
+                <div class="person-avatar ${person.avatarClass}">${person.emoji}</div>
+                <div>
+                  <div class="person-name">${person.name}</div>
+                  <div class="person-role">${person.role}</div>
+                </div>
+              </div>
+              <div class="absence-count">
+                <div class="number">${count}</div>
+                <div class="label">absent</div>
+              </div>
+            </div>
+            <div class="btn-group">
+              ${btnHtml}
+              <button class="action-btn whatsapp" onclick="sendMonthlySummary('${person.id}')">
+                📱 Send Summary via WhatsApp
+              </button>
+            </div>
+            ${datesHtml}
+          </div>`;
+      }).join('');
+
+      document.getElementById('cards').innerHTML = html;
+    }
+
+    // ══════════════════════════════════════
+    // RENDER — HISTORY
+    // ══════════════════════════════════════
+    function renderHistory() {
+      const months = new Set();
+      Object.keys(absences).forEach(key => {
+        const month = key.split('_')[1];
+        if (month) months.add(month);
+      });
+
+      const sorted = [...months].sort().reverse();
+
+      if (sorted.length === 0) {
+        document.getElementById('historyContent').innerHTML = '<div class="empty-state">No absence history yet</div>';
+        return;
+      }
+
+      const html = sorted.map(month => {
+        const [y, m] = month.split('-');
+        const d = new Date(+y, +m - 1);
+        const monthName = d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+        const personBlocks = people.map(person => {
+          const dates = getAbsences(person.id, month);
+          if (dates.length === 0) return '';
+          return `
+            <div style="margin-top: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span>${person.emoji}</span>
+                <span style="font-weight: 600; font-size: 0.85rem;">${person.name}</span>
+                <span class="history-count">${dates.length} day(s)</span>
+              </div>
+              <div class="history-dates">${dates.map(formatDate).join(', ')}</div>
+            </div>`;
+        }).filter(Boolean).join('');
+
+        if (!personBlocks) return '';
+
+        return `<div class="history-month">
+          <div class="history-month-name">${monthName}</div>
+          ${personBlocks}
+        </div>`;
+      }).filter(Boolean).join('');
+
+      document.getElementById('historyContent').innerHTML = html || '<div class="empty-state">No absence history yet</div>';
+    }
+
+    // ══════════════════════════════════════
+    // RENDER — SETTINGS
+    // ══════════════════════════════════════
+    function renderSettings() {
+      const html = people.map((person, i) => `
+        <div class="settings-card">
+          <h3>${person.emoji} ${person.role}</h3>
+          <div class="setting-row">
+            <label>Name</label>
+            <input type="text" id="s_name_${person.id}" value="${person.name}" placeholder="e.g. Sunita">
+          </div>
+          <div class="setting-row">
+            <label>Phone</label>
+            <input type="tel" id="s_phone_${person.id}" value="${person.phone}" placeholder="919876543210" inputmode="tel">
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('settingsForm').innerHTML = html;
+    }
+
+    function saveSettings() {
+      vibrate(10);
+      people.forEach(person => {
+        const nameEl = document.getElementById(`s_name_${person.id}`);
+        const phoneEl = document.getElementById(`s_phone_${person.id}`);
+        if (nameEl) person.name = nameEl.value.trim() || person.role;
+        if (phoneEl) person.phone = phoneEl.value.trim();
+      });
+      save();
+      render();
+      showToast('Settings saved!');
+    }
+
+    function confirmExport() {
+      const data = { people, absences, exportedAt: new Date().toISOString() };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `absence-tracker-backup-${todayStr()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Data exported!');
+    }
+
+    // ══════════════════════════════════════
+    // SERVICE WORKER
+    // ══════════════════════════════════════
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+
+    // ══════════════════════════════════════
+    // INIT
+    // ══════════════════════════════════════
+    render();
+    renderSettings();
+  </script>
+</body>
+</html>
