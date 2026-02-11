@@ -656,8 +656,13 @@
         absences[key].sort();
         save();
         render();
-        showToast('Marked absent for today');
-        sendWhatsApp(personId, today);
+        const count = absences[key].length;
+        if (count % 2 === 0) {
+          showToast(`Absence #${count} — sending WhatsApp`);
+          sendWhatsApp(personId, today);
+        } else {
+          showToast(`Marked absent (${count} this month)`);
+        }
       } else {
         absences[key].splice(idx, 1);
         save();
