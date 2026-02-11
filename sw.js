@@ -1,4 +1,4 @@
-const CACHE_NAME = 'absence-tracker-v4';
+const CACHE_NAME = 'absence-tracker-v5';
 const ASSETS = [
   './',
   './index.html',

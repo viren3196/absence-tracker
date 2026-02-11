@@ -160,6 +160,7 @@
       border-radius: 18px;
       padding: 20px;
       margin-bottom: 14px;
+      position: relative;
     }
 
     .person-header {
@@ -776,30 +777,57 @@
     function toggleAbsence(personId) {
       vibrate(15);
       const today = todayStr();
-      const month = monthKey(new Date());
+      markAbsent(personId, today, true);
+    }
+
+    function markAbsent(personId, dateStr, allowUndo) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const month = monthKey(d);
       const key = `${personId}_${month}`;
 
       if (!absences[key]) absences[key] = [];
 
-      const idx = absences[key].indexOf(today);
+      const idx = absences[key].indexOf(dateStr);
       if (idx === -1) {
-        absences[key].push(today);
+        absences[key].push(dateStr);
         absences[key].sort();
         save();
         render();
         const count = absences[key].length;
         if (count % 2 === 0) {
           showToast(`Absence #${count} — sending WhatsApp`);
-          sendWhatsApp(personId, today);
+          sendWhatsApp(personId, dateStr);
         } else {
-          showToast(`Marked absent (${count} this month)`);
+          showToast(`Marked absent on ${formatDate(dateStr)} (${count} this month)`);
         }
-      } else {
+      } else if (allowUndo) {
         absences[key].splice(idx, 1);
+        if (absences[key].length === 0) delete absences[key];
         save();
         render();
         showToast('Marked present — absence removed');
+      } else {
+        showToast(`${formatDate(dateStr)} is already marked absent`);
       }
+    }
+
+    function openDatePicker(personId) {
+      vibrate();
+      const input = document.getElementById(`datepick_${personId}`);
+      input.max = todayStr();
+      input.value = '';
+      input.showPicker();
+    }
+
+    function onDatePicked(personId) {
+      const input = document.getElementById(`datepick_${personId}`);
+      if (!input.value) return;
+      const pickedDate = input.value;
+      // Switch view to the picked date's month so user sees it
+      const d = new Date(pickedDate + 'T00:00:00');
+      viewMonth = new Date(d.getFullYear(), d.getMonth());
+      markAbsent(personId, pickedDate, false);
+      input.value = '';
     }
 
     function removeAbsence(personId, date) {
@@ -923,9 +951,15 @@
             </div>
             <div class="btn-group">
               ${btnHtml}
-              <button class="action-btn whatsapp" onclick="sendMonthlySummary('${person.id}')">
-                📱 Send Summary via WhatsApp
-              </button>
+              <div style="display: flex; gap: 8px;">
+                <button class="action-btn whatsapp" style="flex: 1;" onclick="sendMonthlySummary('${person.id}')">
+                  📱 WhatsApp Summary
+                </button>
+                <button class="action-btn" style="flex: 1; background: rgba(108,92,231,0.12); color: var(--accent-light); border: 1px solid rgba(108,92,231,0.25);" onclick="openDatePicker('${person.id}')">
+                  📅 Add Past Date
+                </button>
+              </div>
+              <input type="date" id="datepick_${person.id}" style="position:absolute;opacity:0;pointer-events:none;" onchange="onDatePicked('${person.id}')">
             </div>
             ${datesHtml}
           </div>`;
