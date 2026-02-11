@@ -1056,7 +1056,7 @@
       if (dates.length === 0) { showToast(`No absences in ${monthName}`); return; }
 
       const dateList = dates.map(d => `  • ${formatDateLong(d)}`).join('\n');
-      const msg = `Hi ${person.name}, here's your absence summary for ${monthName}:\n\n${dateList}\n\nTotal: ${dates.length} day(s)\n\nPlease note this for payment adjustment.`;
+      const msg = `Hi ${person.name}, here's your absence summary for ${monthName}:\n\n${dateList}\n\nTotal: ${dates.length} day(s)`;
       const phone = person.phone.replace(/[^0-9]/g, '');
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
