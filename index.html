@@ -833,17 +833,10 @@
       }
     }
 
-    function openDatePicker(personId) {
-      vibrate();
-      const input = document.getElementById(`datepick_${personId}`);
-      input.max = todayStr();
-      input.value = '';
-      input.showPicker();
-    }
-
     function onDatePicked(personId) {
       const input = document.getElementById(`datepick_${personId}`);
       if (!input.value) return;
+      vibrate(15);
       const pickedDate = input.value;
       // Switch view to the picked date's month so user sees it
       const d = new Date(pickedDate + 'T00:00:00');
@@ -977,11 +970,14 @@
                 <button class="action-btn whatsapp" style="flex: 1;" onclick="sendMonthlySummary('${person.id}')">
                   📱 WhatsApp Summary
                 </button>
-                <button class="action-btn" style="flex: 1; background: rgba(108,92,231,0.12); color: var(--accent-light); border: 1px solid rgba(108,92,231,0.25);" onclick="openDatePicker('${person.id}')">
-                  📅 Add Past Date
-                </button>
+                <div class="date-pick-wrap" style="flex: 1; position: relative;">
+                  <div class="action-btn" style="background: rgba(108,92,231,0.12); color: var(--accent-light); border: 1px solid rgba(108,92,231,0.25); pointer-events: none;">
+                    📅 Add Past Date
+                  </div>
+                  <input type="date" id="datepick_${person.id}" max="${todayStr()}" onchange="onDatePicked('${person.id}')"
+                    style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:16px;">
+                </div>
               </div>
-              <input type="date" id="datepick_${person.id}" style="position:absolute;opacity:0;pointer-events:none;" onchange="onDatePicked('${person.id}')">
             </div>
             ${datesHtml}
           </div>`;
